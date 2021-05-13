@@ -55,6 +55,9 @@ type Config struct {
 	// SubsystemLevels are the default levels per-subsystem. When unspecified, defaults to Level.
 	SubsystemLevels map[string]LogLevel
 
+	// Sampling configs log sampling, disabled if nil.
+	Sampling *zap.SamplingConfig
+
 	// Stdout indicates whether logs should be written to stdout.
 	Stdout bool
 
@@ -142,6 +145,21 @@ func SetupLogging(cfg Config) {
 	}
 
 	newPrimaryCore := newCore(primaryFormat, ws, LevelDebug) // the main core needs to log everything.
+
+	// Enable log sampling, see https://github.com/uber-go/zap/blob/7b21229fb3f063275f4f169f8a79ad30aa001c51/config.go#L217
+	if scfg := cfg.Sampling; scfg != nil {
+		var samplerOpts []zapcore.SamplerOption
+		if scfg.Hook != nil {
+			samplerOpts = append(samplerOpts, zapcore.SamplerHook(scfg.Hook))
+		}
+		newPrimaryCore = zapcore.NewSamplerWithOptions(
+			newPrimaryCore,
+			time.Second,
+			scfg.Initial,
+			scfg.Thereafter,
+			samplerOpts...,
+		)
+	}
 
 	for k, v := range cfg.Labels {
 		newPrimaryCore = newPrimaryCore.With([]zap.Field{zap.String(k, v)})

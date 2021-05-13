@@ -19,6 +19,7 @@ instances and allows for their levels to be controlled individually.
 Added config options:
 - `AutoStdout`: automatically enables stdout output if the current program is run from a terminal,
   or ((File is not set or not correct) and (URL is not set))
+- `Sampling`: configs log sampling
 
 ## Install
 
