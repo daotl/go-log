@@ -30,6 +30,9 @@ F[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Fatal
 - `ColorizedCompactOutput`: same as `CompactOutput` but colorized
 
 Added config options:
+- `AutoColor`: automatically switches between formats and their colorized counterparts
+  (`ColorizedOutput` <-> `PlaintextOutput`, `ColorizedCompactOutput` <-> `CompactOutput`),
+  if the current program is run from a terminal it switches to the colorized version, vice versa
 - `AutoStdout`: automatically enables stdout output if the current program is run from a terminal,
   or ((File is not set or not correct) and (URL is not set))
 - `Sampling`: configs log sampling

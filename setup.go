@@ -53,6 +53,11 @@ type Config struct {
 	// Format overrides the format of the log output. Defaults to ColorizedOutput
 	Format LogFormat
 
+	// AutoColor automatically switches between formats and their colorized counterparts
+	// (ColorizedOutput <-> PlaintextOutput, ColorizedCompactOutput <-> CompactOutput),
+	// if the current program is run from a terminal it switches to the colorized version, vice versa.
+	AutoColor bool
+
 	// Level is the default minimum enabled logging level.
 	Level LogLevel
 
@@ -80,7 +85,6 @@ type Config struct {
 
 	// AutoStdout automatically enables stdout output if the current program is
 	// run from a terminal, or ((File is not set or not correct) and (URL is not set)).
-	// Defaults to false.
 	AutoStdout bool
 
 	// Labels is a set of key-values to apply to all loggers
@@ -116,7 +120,21 @@ func SetupLogging(cfg Config) {
 	loggerMutex.Lock()
 	defer loggerMutex.Unlock()
 
+	isTTY := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+
 	primaryFormat = cfg.Format
+	if cfg.AutoColor {
+		if cfg.Format == ColorizedOutput && !isTTY {
+			primaryFormat = PlaintextOutput
+		} else if cfg.Format == PlaintextOutput && isTTY {
+			primaryFormat = ColorizedOutput
+		} else if cfg.Format == ColorizedCompactOutput && !isTTY {
+			primaryFormat = CompactOutput
+		} else if cfg.Format == CompactOutput && isTTY {
+			primaryFormat = ColorizedCompactOutput
+		}
+	}
+
 	defaultLevel = cfg.Level
 
 	outputPaths := []string{}
@@ -144,7 +162,6 @@ func SetupLogging(cfg Config) {
 		outputPaths = append(outputPaths, cfg.URL)
 	}
 
-	isTTY := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
 	noFileOrURL := !(fileSet || urlSet)
 	if cfg.Stdout || cfg.AutoStdout && (isTTY || noFileOrURL) {
 		outputPaths = append(outputPaths, "stdout")
