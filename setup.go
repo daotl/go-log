@@ -45,6 +45,8 @@ const (
 	ColorizedOutput LogFormat = iota
 	PlaintextOutput
 	JSONOutput
+	ColorizedCompactOutput
+	CompactOutput
 )
 
 type Config struct {

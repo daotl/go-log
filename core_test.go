@@ -32,6 +32,14 @@ func TestNewCoreFormat(t *testing.T) {
 			format: PlaintextOutput,
 			want:   "2010-05-23T15:14:00.000Z\tINFO\tmain\tscooby\n",
 		},
+		{
+			format: ColorizedCompactOutput,
+			want:   "\x1b[34mI\x1b[0m[2010-05-23T15:14:00.000Z]\tmain\tscooby\n",
+		},
+		{
+			format: CompactOutput,
+			want:   "I[2010-05-23T15:14:00.000Z]\tmain\tscooby\n",
+		},
 	}
 
 	for _, tc := range testCases {

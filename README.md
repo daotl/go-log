@@ -16,6 +16,19 @@ instances and allows for their levels to be controlled individually.
 
 ## Additional features of this fork
 
+Added formats:
+- `CompactOutput`: a compact format which looks like:
+```
+D[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Debug
+I[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Info
+W[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Warn
+E[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Error
+p[2021-05-13T17:49:52.413+0800]	example/log.go:52	for DPanic
+P[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Panic
+F[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Fatal
+```
+- `ColorizedCompactOutput`: same as `CompactOutput` but colorized
+
 Added config options:
 - `AutoStdout`: automatically enables stdout output if the current program is run from a terminal,
   or ((File is not set or not correct) and (URL is not set))

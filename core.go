@@ -6,6 +6,8 @@ import (
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	lzap "github.com/daotl/go-log/v2/zap"
 )
 
 var _ zapcore.Core = (*lockedMultiCore)(nil)
@@ -111,6 +113,12 @@ func newCore(format LogFormat, ws zapcore.WriteSyncer, level LogLevel) zapcore.C
 		encoder = zapcore.NewConsoleEncoder(encCfg)
 	case JSONOutput:
 		encoder = zapcore.NewJSONEncoder(encCfg)
+	case ColorizedCompactOutput:
+		encCfg.EncodeLevel = lzap.CompactColorLevelEncoder
+		encoder = lzap.NewCompactEncoder(encCfg)
+	case CompactOutput:
+		encCfg.EncodeLevel = lzap.CompactLevelEncoder
+		encoder = lzap.NewCompactEncoder(encCfg)
 	default:
 		encCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		encoder = zapcore.NewConsoleEncoder(encCfg)
