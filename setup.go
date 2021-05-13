@@ -7,10 +7,12 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mattn/go-isatty"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func init() {
@@ -67,6 +69,10 @@ type Config struct {
 	// File is a path to a file that logs will be written to.
 	File string
 
+	// Lumberjack configs log rolling using Lumberjack, disabled if nil.
+	// Lumberjack.Filename will be ignored and set to File.
+	Lumberjack *lumberjack.Logger
+
 	// URL with schema supported by zap. Use zap.RegisterSink
 	URL string
 
@@ -114,13 +120,19 @@ func SetupLogging(cfg Config) {
 	outputPaths := []string{}
 
 	fileSet := false
+	var lumberjackWriteSyncer zapcore.WriteSyncer
 	// check if we log to a file
 	if len(cfg.File) > 0 {
 		if path, err := normalizePath(cfg.File); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to resolve log path '%q', logging to %s\n", cfg.File, outputPaths)
 		} else {
 			fileSet = true
-			outputPaths = append(outputPaths, path)
+			if cfg.Lumberjack != nil {
+				cfg.Lumberjack.Filename = path
+				lumberjackWriteSyncer = zapcore.AddSync(cfg.Lumberjack)
+			} else {
+				outputPaths = append(outputPaths, path)
+			}
 		}
 	}
 
@@ -142,6 +154,10 @@ func SetupLogging(cfg Config) {
 	ws, _, err := zap.Open(outputPaths...)
 	if err != nil {
 		panic(fmt.Sprintf("unable to open logging output: %v", err))
+	}
+
+	if lumberjackWriteSyncer != nil {
+		ws = zap.CombineWriteSyncers(ws, lumberjackWriteSyncer)
 	}
 
 	newPrimaryCore := newCore(primaryFormat, ws, LevelDebug) // the main core needs to log everything.
