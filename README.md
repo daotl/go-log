@@ -14,6 +14,12 @@ DAOT Labs' fork of [ipfs/go-log](https://github.com/ipfs/go-log).
 go-log wraps [zap](https://github.com/uber-go/zap) to provide a logging facade. go-log manages logging
 instances and allows for their levels to be controlled individually.
 
+## Additional features of this fork
+
+Added config options:
+- `AutoStdout`: automatically enables stdout output if the current program is run from a terminal,
+  or ((File is not set or not correct) and (URL is not set))
+
 ## Install
 
 ```sh

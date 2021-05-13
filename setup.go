@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/mattn/go-isatty"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -54,17 +55,22 @@ type Config struct {
 	// SubsystemLevels are the default levels per-subsystem. When unspecified, defaults to Level.
 	SubsystemLevels map[string]LogLevel
 
-	// Stderr indicates whether logs should be written to stderr.
-	Stderr bool
-
 	// Stdout indicates whether logs should be written to stdout.
 	Stdout bool
+
+	// Stderr indicates whether logs should be written to stderr.
+	Stderr bool
 
 	// File is a path to a file that logs will be written to.
 	File string
 
 	// URL with schema supported by zap. Use zap.RegisterSink
 	URL string
+
+	// AutoStdout automatically enables stdout output if the current program is
+	// run from a terminal, or ((File is not set or not correct) and (URL is not set)).
+	// Defaults to false.
+	AutoStdout bool
 
 	// Labels is a set of key-values to apply to all loggers
 	Labels map[string]string
@@ -104,23 +110,30 @@ func SetupLogging(cfg Config) {
 
 	outputPaths := []string{}
 
-	if cfg.Stderr {
-		outputPaths = append(outputPaths, "stderr")
-	}
-	if cfg.Stdout {
-		outputPaths = append(outputPaths, "stdout")
-	}
-
+	fileSet := false
 	// check if we log to a file
 	if len(cfg.File) > 0 {
 		if path, err := normalizePath(cfg.File); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to resolve log path '%q', logging to %s\n", cfg.File, outputPaths)
 		} else {
+			fileSet = true
 			outputPaths = append(outputPaths, path)
 		}
 	}
+
+	urlSet := false
 	if len(cfg.URL) > 0 {
+		urlSet = true
 		outputPaths = append(outputPaths, cfg.URL)
+	}
+
+	isTTY := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	noFileOrURL := !(fileSet || urlSet)
+	if cfg.Stdout || cfg.AutoStdout && (isTTY || noFileOrURL) {
+		outputPaths = append(outputPaths, "stdout")
+	}
+	if cfg.Stderr {
+		outputPaths = append(outputPaths, "stderr")
 	}
 
 	ws, _, err := zap.Open(outputPaths...)
