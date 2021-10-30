@@ -11,7 +11,8 @@ instances and allows for their levels to be controlled individually.
 
 ## Additional features of this fork
 
-Added formats:
+### Added formats
+
 - `CompactOutput`: a compact format which looks like:
 ```
 D[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Debug
@@ -24,7 +25,8 @@ F[2021-05-13T17:49:52.413+0800]	example/log.go:52	for Fatal
 ```
 - `ColorizedCompactOutput`: same as `CompactOutput` but colorized
 
-Added config options:
+### Added config options
+
 - `AutoColor`: automatically switches between formats and their colorized counterparts
   (`ColorizedOutput` <-> `PlaintextOutput`, `ColorizedCompactOutput` <-> `CompactOutput`),
   if the current program is run from a terminal it switches to the colorized version, vice versa
@@ -92,8 +94,6 @@ log level for `subsystem1` to `info` and reduce the minimum log level for `subsy
 export GOLOG_LOG_LEVEL="error,subsystem1=info,subsystem2=debug"
 ```
 
-`IPFS_LOGGING` is a deprecated alias for this environment variable.
-
 #### `GOLOG_FILE`
 
 Specifies that logs should be written to the specified file. If this option is _not_ specified, logs are written to standard error.
@@ -137,7 +137,9 @@ export GOLOG_LOG_FMT="json"
 
 The logging format defaults to `color` when the output is a terminal, and `nocolor` otherwise.
 
-`IPFS_LOGGING_FMT` is a deprecated alias for this environment variable.
+#### `GOLOG_AUTO_COLOR`
+
+See `AutoColor` in [Added config options](#added-config-options).
 
 #### `GOLOG_LOG_LABELS`
 
