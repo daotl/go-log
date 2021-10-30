@@ -21,16 +21,9 @@ func init() {
 
 // Logging environment variables
 const (
-	// IPFS_* prefixed env vars kept for backwards compatibility
-	// for this release. They will not be available in the next
-	// release.
-	//
-	// GOLOG_* env vars take precedences over IPFS_* env vars.
-	envIPFSLogging    = "IPFS_LOGGING"
-	envIPFSLoggingFmt = "IPFS_LOGGING_FMT"
-
 	envLogging    = "GOLOG_LOG_LEVEL"
 	envLoggingFmt = "GOLOG_LOG_FMT"
+	envAutoColor  = "GOLOG_AUTO_COLOR"
 
 	envLoggingFile = "GOLOG_FILE" // /path/to/file
 	envLoggingURL  = "GOLOG_URL"  // url that will be processed by sink in the zap
@@ -120,7 +113,7 @@ func SetupLogging(cfg Config) {
 	loggerMutex.Lock()
 	defer loggerMutex.Unlock()
 
-	isTTY := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	isTTY := isTerm(os.Stdout)
 
 	primaryFormat = cfg.Format
 	if cfg.AutoColor {
@@ -200,13 +193,7 @@ func SetupLogging(cfg Config) {
 		newPrimaryCore = newPrimaryCore.With([]zap.Field{zap.String(k, v)})
 	}
 
-	if primaryCore != nil {
-		loggerCore.ReplaceCore(primaryCore, newPrimaryCore)
-	} else {
-		loggerCore.AddCore(newPrimaryCore)
-	}
-	primaryCore = newPrimaryCore
-
+	setPrimaryCore(newPrimaryCore)
 	setAllLoggers(defaultLevel)
 
 	for name, level := range cfg.SubsystemLevels {
@@ -216,6 +203,24 @@ func SetupLogging(cfg Config) {
 			levels[name] = zap.NewAtomicLevelAt(zapcore.Level(level))
 		}
 	}
+}
+
+// SetPrimaryCore changes the primary logging core. If the SetupLogging was
+// called then the previously configured core will be replaced.
+func SetPrimaryCore(core zapcore.Core) {
+	loggerMutex.Lock()
+	defer loggerMutex.Unlock()
+
+	setPrimaryCore(core)
+}
+
+func setPrimaryCore(core zapcore.Core) {
+	if primaryCore != nil {
+		loggerCore.ReplaceCore(primaryCore, core)
+	} else {
+		loggerCore.AddCore(core)
+	}
+	primaryCore = core
 }
 
 // SetDebugLogging calls SetAllLoggers with logging.DEBUG
@@ -335,21 +340,37 @@ func configFromEnv() Config {
 	}
 
 	format := os.Getenv(envLoggingFmt)
-	if format == "" {
-		format = os.Getenv(envIPFSLoggingFmt)
-	}
+
+	var noExplicitFormat bool
 
 	switch format {
+	case "color":
+		cfg.Format = ColorizedOutput
 	case "nocolor":
 		cfg.Format = PlaintextOutput
 	case "json":
 		cfg.Format = JSONOutput
+	case "compactcolor":
+		cfg.Format = ColorizedCompactOutput
+	case "compactnocolor":
+		cfg.Format = CompactOutput
+	default:
+		if format != "" {
+			fmt.Fprintf(os.Stderr, "ignoring unrecognized log format '%s'\n", format)
+		}
+		noExplicitFormat = true
 	}
 
-	lvl := os.Getenv(envLogging)
-	if lvl == "" {
-		lvl = os.Getenv(envIPFSLogging)
+	autoColorStr, autoColor := os.LookupEnv(envAutoColor)
+	if autoColor {
+		autoColorStr = strings.ToLower(strings.TrimSpace(autoColorStr))
+		if autoColorStr == "no" || autoColorStr == "false" {
+			autoColor = false
+		}
 	}
+	cfg.AutoColor = autoColor
+
+	lvl := os.Getenv(envLogging)
 	if lvl != "" {
 		for _, kvs := range strings.Split(lvl, ",") {
 			kv := strings.SplitN(kvs, "=", 2)
@@ -394,6 +415,16 @@ func configFromEnv() Config {
 		}
 	}
 
+	// Check that neither of the requested Std* nor the file are TTYs
+	// At this stage (configFromEnv) we do not have a uniform list to examine yet
+	if noExplicitFormat &&
+		!(cfg.Stdout && isTerm(os.Stdout)) &&
+		!(cfg.Stderr && isTerm(os.Stderr)) &&
+		// check this last: expensive
+		!(cfg.File != "" && pathIsTerm(cfg.File)) {
+		cfg.Format = PlaintextOutput
+	}
+
 	labels := os.Getenv(envLoggingLabels)
 	if labels != "" {
 		labelKVs := strings.Split(labels, ",")
@@ -408,4 +439,17 @@ func configFromEnv() Config {
 	}
 
 	return cfg
+}
+
+func isTerm(f *os.File) bool {
+	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+}
+
+func pathIsTerm(p string) bool {
+	// !!!no!!! O_CREAT, if we fail - we fail
+	f, err := os.OpenFile(p, os.O_WRONLY, 0)
+	if f != nil {
+		defer f.Close() // nolint:errcheck
+	}
+	return err == nil && isTerm(f)
 }
